@@ -1,0 +1,15 @@
+[
+  { "id": "OR_1", "team_a": "VITALITY",      "team_b": "FUT",         "stage": 1 },
+  { "id": "OR_2", "team_a": "ASTRALIS",      "team_b": "G2",          "stage": 1 },
+  { "id": "OR_3", "team_a": "NATUS VINCERE", "team_b": "FAZE",        "stage": 1 },
+  { "id": "OR_4", "team_a": "FURIA",         "team_b": "GAMERLEGION", "stage": 1 },
+  { "id": "UF_1", "team_a": "OR_1_W",  "team_b": "OR_2_W",  "stage": 2 },
+  { "id": "UF_2", "team_a": "OR_3_W",  "team_b": "OR_4_W",  "stage": 2 },
+  { "id": "LR_1", "team_a": "OR_1_L",  "team_b": "OR_2_L",  "stage": 2 },
+  { "id": "LR_2", "team_a": "OR_3_L",  "team_b": "OR_4_L",  "stage": 2 },
+  { "id": "QF_1", "team_a": "UF_2_L",  "team_b": "LR_1_W",  "stage": 3 },
+  { "id": "QF_2", "team_a": "UF_1_L",  "team_b": "LR_2_W",  "stage": 3 },
+  { "id": "SF_1", "team_a": "UF_1_W",  "team_b": "QF_1_W",  "stage": 4 },
+  { "id": "SF_2", "team_a": "UF_2_W",  "team_b": "QF_2_W",  "stage": 4 },
+  { "id": "GF",   "team_a": "SF_1_W",  "team_b": "SF_2_W",  "stage": 5 }
+]

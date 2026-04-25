@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tournament Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ── Reset & Base ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0d0f12;
+  --surface:   #161921;
+  --surface2:  #1e222c;
+  --border:    #2a2f3d;
+  --border2:   #363d52;
+  --text:      #e8eaf0;
+  --text-dim:  #7a8099;
+  --text-muted:#4a5068;
+  --accent:    #4f8ef7;
+  --accent-dim:#1e3a6e;
+  --win:       #3ec97a;
+  --win-dim:   #163626;
+  --loss:      #e05555;
+  --loss-dim:  #3d1616;
+  --stage-colors: #4f8ef7, #a78bfa, #34d399, #f59e0b, #f472b6;
+  --conn:      #2a3050;
+  --conn-active: #4f8ef7;
+  --r: 4px;
+}
+
+html, body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Header ───────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+header h1 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+header h1 span { color: var(--accent); }
+
+.event-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.event-select-wrap label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+select#event-picker {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 13px;
+  padding: 6px 28px 6px 10px;
+  border-radius: var(--r);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a8099' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  min-width: 200px;
+}
+
+select#event-picker:focus { outline: 1px solid var(--accent); }
+
+.reset-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: var(--r);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  transition: border-color .15s, color .15s;
+}
+.reset-btn:hover { border-color: var(--border2); color: var(--text); }
+#clear-btn:hover { border-color: var(--loss); color: var(--loss); }
+
+/* ── Main layout ──────────────────────────────────────── */
+#app {
+  padding: 28px 24px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.event-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.event-meta h2 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+.badge-bracket { background: var(--accent-dim); color: var(--accent); }
+.badge-swiss   { background: #2d1f4e; color: #a78bfa; }
+
+.event-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* ── Loading / Error ─────────────────────────────────── */
+.state-msg {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.state-msg .icon { font-size: 32px; margin-bottom: 12px; }
+
+/* ══════════════════════════════════════════════════════
+   BRACKET VIEW
+   ══════════════════════════════════════════════════════ */
+
+.bracket-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 16px;
+}
+
+.bracket-scroll {
+  display: inline-flex;
+  gap: 0;
+  align-items: flex-start;
+  position: relative;
+  min-width: max-content;
+}
+
+.bracket-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  min-width: 200px;
+  padding-right: 48px;
+}
+.bracket-stage:last-child {
+  padding-right: 0;
+}
+
+.stage-header {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 0 0 12px 12px;
+  white-space: nowrap;
+}
+
+.stage-matches {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  flex: 1;
+  position: relative;
+}
+
+/* SVG connector canvas — absolutely positioned */
+.connector-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Match card */
+.match-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  width: 188px;
+  margin: 6px 12px;
+  transition: border-color .15s;
+  position: relative;
+  z-index: 2;
+}
+.match-card:hover { border-color: var(--border2); }
+.match-card.pending { opacity: .55; }
+
+.match-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background .12s;
+  position: relative;
+}
+.match-team:first-of-type { border-bottom: 1px solid var(--border); }
+.match-team.clickable:hover:not(.winner):not(.loser) { background: var(--surface2); }
+.match-team.clickable.loser:hover { background: color-mix(in srgb, var(--surface2) 80%, var(--win-dim)); cursor: pointer; }
+.match-team.clickable { cursor: pointer; }
+.match-team.tbd { cursor: default; }
+
+.match-team.winner { background: var(--win-dim); }
+.match-team.winner .team-name { color: var(--win); font-weight: 600; }
+.match-team.loser  { background: var(--loss-dim); opacity: .7; }
+.match-team.loser  .team-name { color: var(--text-dim); }
+
+.seed-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border-radius: 2px;
+  padding: 1px 4px;
+  min-width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.match-team.winner .seed-badge { background: #1d3d28; color: #5fd68c; }
+.match-team.loser  .seed-badge { opacity: .5; }
+
+.team-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-id-label {
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: .04em;
+}
+
+.team-logo {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+.team-logo-placeholder {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.tbd-label {
+  color: var(--text-muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ══════════════════════════════════════════════════════
+   SWISS VIEW
+   ══════════════════════════════════════════════════════ */
+
+.swiss-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Standings sidebar */
+.swiss-standings {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.swiss-standings h3 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.standing-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background .1s;
+}
+.standing-row:last-child { border-bottom: none; }
+
+.standing-pos {
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 16px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.standing-logo {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.standing-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.standing-record {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.standing-buch {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.standing-row.advanced { background: color-mix(in srgb, var(--win-dim) 60%, transparent); }
+.standing-row.advanced .standing-name { color: var(--win); }
+.standing-row.eliminated { background: color-mix(in srgb, var(--loss-dim) 60%, transparent); opacity: .6; }
+.standing-row.eliminated .standing-name { color: var(--text-dim); text-decoration: line-through; }
+
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.adv  { background: var(--win); }
+.status-dot.elim { background: var(--loss); }
+.status-dot.none { background: transparent; }
+
+/* Swiss rounds */
+.swiss-rounds { display: flex; flex-direction: column; gap: 20px; }
+
+.round-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.round-block-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.round-block-header h3 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.round-record-tag {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 2px 6px;
+}
+
+.round-status-tag {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.round-status-tag.active { color: var(--accent); }
+.round-status-tag.done   { color: var(--win); }
+
+.swiss-matches-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.swiss-match-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.swiss-match-row:last-child { border-bottom: none; }
+
+.swiss-team-btn {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.swiss-team-btn:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: var(--border2);
+}
+.swiss-team-btn.winner {
+  background: var(--win-dim);
+  border-color: #2d5e3e;
+  color: var(--win);
+}
+.swiss-team-btn.loser {
+  background: var(--loss-dim);
+  border-color: #4a2020;
+  color: var(--text-muted);
+  opacity: .7;
+}
+.swiss-team-btn:disabled { cursor: default; }
+
+.vs-sep {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.swiss-record-badge {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* Locked-in pending round */
+.round-pending-msg {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Utility ─────────────────────────────────────────── */
+.divider-label {
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 4px 0 4px 14px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TOURNAMENT <span>SIM</span></h1>
+  <div class="event-select-wrap">
+    <label for="event-picker">Event</label>
+    <select id="event-picker"><option value="">Loading…</option></select>
+    <button class="reset-btn" id="clear-btn">Clear Tree</button>
+    <button class="reset-btn" id="reset-btn">Reset to Seeds</button>
+  </div>
+</header>
+
+<div id="app">
+  <div class="state-msg"><div class="icon">⏳</div>Loading events…</div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   UTILITIES
+   ════════════════════════════════════════════════════ */
+
+async function fetchJSON(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(`HTTP ${r.status} for ${path}`);
+  return r.json();
+}
+
+/* ════════════════════════════════════════════════════
+   BOOT — load event list
+   ════════════════════════════════════════════════════ */
+
+let currentTournament = null;
+
+async function boot() {
+  const picker = document.getElementById('event-picker');
+  let eventList;
+  try {
+    eventList = await fetchJSON('events.json');
+  } catch(e) {
+    document.getElementById('app').innerHTML =
+      `<div class="state-msg"><div class="icon">⚠️</div>Could not load events.json</div>`;
+    return;
+  }
+
+  // Build picker
+  picker.innerHTML = '';
+  for (const slug of eventList) {
+    const opt = document.createElement('option');
+    opt.value = slug;
+    opt.textContent = slug; // replaced below after meta loads
+    picker.appendChild(opt);
+  }
+
+  // Pre-load names
+  for (const slug of eventList) {
+    try {
+      const meta = await fetchJSON(`events/${slug}/tournament.json`);
+      const opt = picker.querySelector(`option[value="${slug}"]`);
+      if (opt) opt.textContent = meta.name || slug;
+    } catch(_) {}
+  }
+
+  if (eventList.length) loadEvent(eventList[0]);
+
+  picker.addEventListener('change', () => loadEvent(picker.value));
+  document.getElementById('reset-btn').addEventListener('click', () => { if(currentTournament) currentTournament.reset(); });
+  document.getElementById('clear-btn').addEventListener('click', () => { if(currentTournament) currentTournament.clear(); });
+}
+
+/* ════════════════════════════════════════════════════
+   LOAD EVENT
+   ════════════════════════════════════════════════════ */
+
+async function loadEvent(slug) {
+  const app = document.getElementById('app');
+  app.innerHTML = `<div class="state-msg"><div class="icon">⏳</div>Loading…</div>`;
+  currentTournament = null;
+
+  try {
+    const meta = await fetchJSON(`events/${slug}/tournament.json`);
+
+    if (meta.format === 'bracket') {
+      const matches = await fetchJSON(`events/${slug}/matches.json`);
+      currentTournament = new BracketTournament(meta, matches);
+    } else if (meta.format === 'swiss') {
+      currentTournament = new SwissTournament(meta);
+    } else {
+      app.innerHTML = `<div class="state-msg"><div class="icon">⚠️</div>Unknown format: ${meta.format}</div>`;
+      return;
+    }
+
+    currentTournament.render(app);
+  } catch(e) {
+    app.innerHTML = `<div class="state-msg"><div class="icon">⚠️</div>${e.message}</div>`;
+    console.error(e);
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   BRACKET TOURNAMENT
+   ════════════════════════════════════════════════════ */
+
+class BracketTournament {
+  constructor(meta, matchDefs) {
+    this.meta = meta;
+    this.matchDefs = matchDefs;
+    this.results = {};
+    this.seedMap = this.buildSeedMap();
+    this.manualMode = false;
+    this.autoFillSeeds();
+  }
+
+  reset() {
+    this.results = {};
+    this.manualMode = false;
+    this.autoFillSeeds();
+    this.render(document.getElementById('app'));
+  }
+
+  clear() {
+    this.results = {};
+    this.manualMode = true;
+    this.render(document.getElementById('app'));
+  }
+
+  buildSeedMap() {
+    const seed = {};
+    if (this.meta.seeds && this.meta.seeds.length) {
+      this.meta.seeds.forEach((t, i) => { seed[t] = i + 1; });
+    } else {
+      // fallback: order of first appearance across all matches
+      let s = 1;
+      for (const m of this.matchDefs) {
+        if (!m.team_a.includes('_') && !(m.team_a in seed)) seed[m.team_a] = s++;
+        if (!m.team_b.includes('_') && !(m.team_b in seed)) seed[m.team_b] = s++;
+      }
+    }
+    return seed;
+  }
+
+  autoFillSeeds() {
+    // Topological pass: process matches in stage order so references resolve
+    const stages = [...new Set(this.matchDefs.map(m => m.stage))].sort((a,b)=>a-b);
+    for (const stage of stages) {
+      for (const m of this.matchDefs.filter(x => x.stage === stage)) {
+        if (this.results[m.id]) continue;
+        const ta = this.resolveTeam(m.team_a);
+        const tb = this.resolveTeam(m.team_b);
+        if (!ta.resolved || !tb.resolved) continue;
+        const seedA = this.seedMap[ta.name] ?? 9999;
+        const seedB = this.seedMap[tb.name] ?? 9999;
+        this.results[m.id] = seedA <= seedB ? 'A' : 'B';
+      }
+    }
+  }
+
+  /* Resolve a team reference: either a plain name or "MATCHID_W/L" */
+  resolveTeam(ref) {
+    if (!ref.includes('_W') && !ref.includes('_L')) return { name: ref, resolved: true };
+    const parts = ref.split('_');
+    const suffix = parts[parts.length - 1];
+    const matchId = parts.slice(0, -1).join('_');
+    const result = this.results[matchId];
+    if (!result) return { name: null, resolved: false };
+
+    const def = this.matchDefs.find(m => m.id === matchId);
+    if (!def) return { name: '?', resolved: true };
+
+    const teamRef = suffix === 'W'
+      ? (result === 'A' ? def.team_a : def.team_b)
+      : (result === 'A' ? def.team_b : def.team_a);
+    return this.resolveTeam(teamRef);
+  }
+
+  logoPath(teamName) {
+    return `team_logos/${teamName}.png`;
+  }
+
+  teamHTML(resolved, seedMap) {
+    if (!resolved.resolved) {
+      return `<span class="team-logo-placeholder"></span><span class="team-name tbd-label">TBD</span>`;
+    }
+    const name = resolved.name;
+    const seed = seedMap[name] ?? '';
+    return `
+      <img class="team-logo" src="${this.logoPath(name)}" alt="" onerror="this.style.display='none'">
+      <span class="seed-badge">${seed}</span>
+      <span class="team-name">${name}</span>`;
+  }
+
+  render(container) {
+    const stages = [...new Set(this.matchDefs.map(m => m.stage))].sort((a,b)=>a-b);
+    // Stage names come only from JSON — no guessing
+    const stageNames = this.meta.stage_names || {};
+
+    let html = `
+      <div class="event-meta">
+        <h2>${this.meta.name}</h2>
+        <span class="badge badge-bracket">Bracket</span>
+        ${this.meta.date ? `<span class="event-date">${this.meta.date}</span>` : ''}
+      </div>
+      <div class="bracket-wrap">
+        <div class="bracket-scroll" id="bracket-scroll">`;
+
+    for (const stage of stages) {
+      const stageMatches = this.matchDefs.filter(m => m.stage === stage);
+      const stageName = stageNames[String(stage)] || stageNames[stage] || '';
+      html += `
+        <div class="bracket-stage" id="stage-${stage}">
+          <div class="stage-header">${stageName}</div>
+          <div class="stage-matches" id="stage-matches-${stage}">`;
+
+      for (const m of stageMatches) {
+        const ta = this.resolveTeam(m.team_a);
+        const tb = this.resolveTeam(m.team_b);
+        const res = this.results[m.id];
+        const aWin = res === 'A', bWin = res === 'B';
+        const isPending = !ta.resolved || !tb.resolved;
+
+        const aClass = isPending ? 'tbd' : res ? (aWin ? 'winner' : 'loser') : '';
+        const bClass = isPending ? 'tbd' : res ? (bWin ? 'winner' : 'loser') : '';
+        // Both teams clickable whenever both are resolved (pending = neither clickable)
+        const clickable = !isPending;
+
+        html += `
+          <div class="match-card ${isPending ? 'pending' : ''}" data-match="${m.id}">
+            <span class="match-id-label">${m.id}</span>
+            <div class="match-team ${aClass} ${clickable ? 'clickable' : 'tbd'}"
+                 data-match="${m.id}" data-side="A">
+              ${this.teamHTML(ta, this.seedMap)}
+            </div>
+            <div class="match-team ${bClass} ${clickable ? 'clickable' : 'tbd'}"
+                 data-match="${m.id}" data-side="B">
+              ${this.teamHTML(tb, this.seedMap)}
+            </div>
+          </div>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    html += `</div></div>`;
+    container.innerHTML = html;
+
+    // Any resolved team slot is clickable — clicking the loser flips the result,
+    // clicking the winner does nothing (already won).
+    container.querySelectorAll('.match-team.clickable').forEach(el => {
+      el.addEventListener('click', () => {
+        const matchId = el.dataset.match;
+        const side    = el.dataset.side;
+        if (this.results[matchId] === side) return; // already the winner, no-op
+        // Set new winner — clears only downstream matches that depended on the old result
+        this.setResult(matchId, side);
+        this.render(container);
+      });
+    });
+
+    requestAnimationFrame(() => this.drawConnectors(stages));
+  }
+
+  setResult(matchId, side) {
+    this.clearDownstream(matchId);
+    this.results[matchId] = side;
+    // Only auto-fill downstream when NOT in manual mode
+    if (!this.manualMode) {
+      this.autoFillDownstream(matchId);
+    }
+  }
+
+  clearDownstream(matchId) {
+    // Remove only matches that depend on matchId (not matchId itself)
+    const toRemove = new Set();
+    let changed = true;
+    const seed = new Set([matchId]);
+    while (changed) {
+      changed = false;
+      for (const m of this.matchDefs) {
+        if (toRemove.has(m.id) || m.id === matchId) continue;
+        if (this.getDependencies(m).some(d => seed.has(d))) {
+          toRemove.add(m.id); seed.add(m.id); changed = true;
+        }
+      }
+    }
+    for (const id of toRemove) delete this.results[id];
+  }
+
+  autoFillDownstream(fromMatchId) {
+    // Topological fill starting from matches that depend on fromMatchId
+    const stages = [...new Set(this.matchDefs.map(m => m.stage))].sort((a,b)=>a-b);
+    for (const stage of stages) {
+      for (const m of this.matchDefs.filter(x => x.stage === stage)) {
+        if (this.results[m.id]) continue;
+        const ta = this.resolveTeam(m.team_a);
+        const tb = this.resolveTeam(m.team_b);
+        if (!ta.resolved || !tb.resolved) continue;
+        const seedA = this.seedMap[ta.name] ?? 9999;
+        const seedB = this.seedMap[tb.name] ?? 9999;
+        this.results[m.id] = seedA <= seedB ? 'A' : 'B';
+      }
+    }
+  }
+
+  undoFrom(matchId) {
+    const toRemove = new Set([matchId]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const m of this.matchDefs) {
+        if (toRemove.has(m.id)) continue;
+        if (this.getDependencies(m).some(d => toRemove.has(d))) {
+          toRemove.add(m.id); changed = true;
+        }
+      }
+    }
+    for (const id of toRemove) delete this.results[id];
+  }
+
+  getDependencies(matchDef) {
+    return [matchDef.team_a, matchDef.team_b]
+      .filter(r => r.includes('_W') || r.includes('_L'))
+      .map(r => r.split('_').slice(0, -1).join('_'));
+  }
+
+  drawConnectors(stages) {
+    const scroll = document.getElementById('bracket-scroll');
+    if (!scroll) return;
+
+    // Remove old SVG
+    scroll.querySelectorAll('.connector-svg').forEach(s => s.remove());
+
+    const scrollRect = scroll.getBoundingClientRect();
+
+    for (let si = 0; si < stages.length - 1; si++) {
+      const fromStage = stages[si];
+      const toStage   = stages[si + 1];
+
+      const fromStageEl = document.getElementById(`stage-${fromStage}`);
+      const toStageEl   = document.getElementById(`stage-${toStage}`);
+      if (!fromStageEl || !toStageEl) continue;
+
+      // Create SVG overlay over the gap between stages
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.classList.add('connector-svg');
+      svg.style.position = 'absolute';
+      svg.style.top = '0';
+      svg.style.left = '0';
+      svg.style.width = scroll.scrollWidth + 'px';
+      svg.style.height = scroll.scrollHeight + 'px';
+      svg.style.pointerEvents = 'none';
+      scroll.insertBefore(svg, scroll.firstChild);
+
+      const toMatches = this.matchDefs.filter(m => m.stage === toStage);
+      const scrollLeft = scroll.scrollLeft || 0;
+      const scrollTop  = scroll.scrollTop  || 0;
+
+      for (const toMatch of toMatches) {
+        const toCard = scroll.querySelector(`[data-match="${toMatch.id}"]`)?.closest('.match-card');
+        if (!toCard) continue;
+
+        const toRect = toCard.getBoundingClientRect();
+        const toX = toRect.left - scrollRect.left + scrollLeft;
+        const toY = toRect.top  - scrollRect.top  + scrollTop;
+        const toH = toRect.height;
+        const toMidA = toY + toH * 0.25;
+        const toMidB = toY + toH * 0.75;
+        const toRight = toX; // left edge of dest card
+
+        // Find source matches
+        for (const [ref, destMidY] of [[toMatch.team_a, toMidA], [toMatch.team_b, toMidB]]) {
+          if (!ref.includes('_W') && !ref.includes('_L')) continue;
+          const parts   = ref.split('_');
+          const suffix  = parts[parts.length - 1];
+          const srcId   = parts.slice(0, -1).join('_');
+          const srcCard = scroll.querySelector(`[data-match="${srcId}"]`)?.closest('.match-card');
+          if (!srcCard) continue;
+
+          const srcRect = srcCard.getBoundingClientRect();
+          const srcX = srcRect.left - scrollRect.left + scrollLeft + srcRect.width;
+          const srcY = srcRect.top  - scrollRect.top  + scrollTop;
+          const srcH = srcRect.height;
+          const srcMidY = suffix === 'W' ? srcY + srcH * 0.25 : srcY + srcH * 0.75;
+
+          const isActive = !!this.results[srcId];
+          const mx = srcX + (toRight - srcX) * 0.5;
+
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d',
+            `M ${srcX} ${srcMidY} C ${mx} ${srcMidY}, ${mx} ${destMidY}, ${toRight} ${destMidY}`
+          );
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke', isActive ? 'var(--conn-active)' : 'var(--conn)');
+          path.setAttribute('stroke-width', isActive ? '1.5' : '1');
+          path.setAttribute('opacity', isActive ? '0.7' : '0.4');
+          svg.appendChild(path);
+        }
+      }
+    }
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   SWISS TOURNAMENT
+   ════════════════════════════════════════════════════ */
+
+class SwissTournament {
+  constructor(meta) {
+    this.meta    = meta;
+    this.cfg     = meta.swiss;
+    this.teams   = meta.swiss.teams;
+    this.wins    = Object.fromEntries(this.teams.map(t => [t, 0]));
+    this.losses  = Object.fromEntries(this.teams.map(t => [t, 0]));
+    // rounds: array of arrays of {a, b, winner: null|a|b}
+    this.rounds  = [];
+    this.generateNextRound();
+  }
+
+  reset() {
+    this.wins   = Object.fromEntries(this.teams.map(t => [t, 0]));
+    this.losses = Object.fromEntries(this.teams.map(t => [t, 0]));
+    this.rounds = [];
+    this.generateNextRound();
+    this.render(document.getElementById('app'));
+  }
+
+  advWins()  { return this.cfg.advance_wins  || 3; }
+  elimLoss() { return this.cfg.eliminate_losses || 3; }
+  totalRounds() { return this.cfg.rounds || 5; }
+
+  isAdvanced(team)   { return this.wins[team]   >= this.advWins(); }
+  isEliminated(team) { return this.losses[team] >= this.elimLoss(); }
+  isActive(team)     { return !this.isAdvanced(team) && !this.isEliminated(team); }
+
+  buchholz(team) {
+    // sum of opponents' wins
+    let score = 0;
+    for (const round of this.rounds) {
+      for (const m of round) {
+        if (m.a === team) score += this.wins[m.b];
+        if (m.b === team) score += this.wins[m.a];
+      }
+    }
+    return score;
+  }
+
+  generateNextRound() {
+    const active = this.teams.filter(t => this.isActive(t));
+    if (active.length < 2) return;
+
+    // Group by W-L record
+    const groups = {};
+    for (const t of active) {
+      const key = `${this.wins[t]}-${this.losses[t]}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    }
+
+    // Sort each group by seed (original index)
+    const seedOf = t => this.teams.indexOf(t);
+    for (const k in groups) groups[k].sort((a,b) => seedOf(a) - seedOf(b));
+
+    // Pair within groups by seed order; unpaired bubbles to next group
+    const pairs = [];
+    let leftover = null;
+
+    // Sort group keys by record (best first)
+    const sortedKeys = Object.keys(groups).sort((a,b) => {
+      const [aw,al] = a.split('-').map(Number);
+      const [bw,bl] = b.split('-').map(Number);
+      return (bw - bl) - (aw - al);
+    });
+
+    for (const key of sortedKeys) {
+      const pool = leftover ? [leftover, ...groups[key]] : [...groups[key]];
+      leftover = null;
+      for (let i = 0; i + 1 < pool.length; i += 2) {
+        pairs.push({ a: pool[i], b: pool[i+1], winner: null });
+      }
+      if (pool.length % 2 === 1) leftover = pool[pool.length - 1];
+    }
+    if (leftover) {
+      // pair with highest available opponent
+      const fallback = active.find(t => t !== leftover && !pairs.some(p => p.a===t||p.b===t));
+      if (fallback) pairs.push({ a: leftover, b: fallback, winner: null });
+    }
+
+    this.rounds.push(pairs);
+  }
+
+  getRoundNumber() { return this.rounds.length; }
+  currentRound()   { return this.rounds[this.rounds.length - 1]; }
+  roundComplete(r) { return r.every(m => m.winner !== null); }
+
+  pickWinner(roundIdx, matchIdx, winner) {
+    const match = this.rounds[roundIdx][matchIdx];
+    if (match.winner) return; // already decided
+
+    match.winner = winner;
+    this.wins[winner]++;
+    const loser = winner === match.a ? match.b : match.a;
+    this.losses[loser]++;
+
+    // Check if round done → generate next
+    if (this.roundComplete(this.rounds[roundIdx])) {
+      const stillActive = this.teams.filter(t => this.isActive(t));
+      if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
+        this.generateNextRound();
+      }
+    }
+
+    this.render(document.getElementById('app'));
+  }
+
+  standings() {
+    return [...this.teams].sort((a, b) => {
+      const wDiff = this.wins[b] - this.wins[a];
+      if (wDiff !== 0) return wDiff;
+      const lDiff = this.losses[a] - this.losses[b]; // fewer losses = better
+      if (lDiff !== 0) return lDiff;
+      return this.buchholz(b) - this.buchholz(a);
+    });
+  }
+
+  render(container) {
+    const advW  = this.advWins();
+    const elimL = this.elimLoss();
+
+    let html = `
+      <div class="event-meta">
+        <h2>${this.meta.name}</h2>
+        <span class="badge badge-swiss">Swiss</span>
+        ${this.meta.date ? `<span class="event-date">${this.meta.date}</span>` : ''}
+      </div>
+      <div class="swiss-layout">
+        <div class="swiss-standings">
+          <h3>Standings</h3>`;
+
+    const sorted = this.standings();
+    const advanced   = sorted.filter(t => this.isAdvanced(t));
+    const active     = sorted.filter(t => this.isActive(t));
+    const eliminated = sorted.filter(t => this.isEliminated(t));
+
+    if (advanced.length) {
+      html += `<div class="divider-label">Advanced (${advW}-x)</div>`;
+      advanced.forEach((t, i) => {
+        html += this.standingRow(t, i+1, 'advanced');
+      });
+    }
+    if (active.length) {
+      if (advanced.length) html += `<div class="divider-label">Active</div>`;
+      active.forEach((t, i) => {
+        html += this.standingRow(t, advanced.length + i + 1, '');
+      });
+    }
+    if (eliminated.length) {
+      html += `<div class="divider-label">Eliminated (x-${elimL})</div>`;
+      eliminated.forEach((t, i) => {
+        html += this.standingRow(t, advanced.length + active.length + i + 1, 'eliminated');
+      });
+    }
+
+    html += `</div><div class="swiss-rounds">`;
+
+    for (let ri = 0; ri < this.rounds.length; ri++) {
+      const round   = this.rounds[ri];
+      const done    = this.roundComplete(round);
+      const isCurr  = ri === this.rounds.length - 1;
+
+      // Determine record groups present in this round
+      const records = [...new Set(round.map(m => {
+        const w = this.wins[m.a]; const l = this.losses[m.a]; // before pick
+        return null; // skip label
+      }))];
+
+      html += `
+        <div class="round-block">
+          <div class="round-block-header">
+            <h3>Round ${ri + 1}</h3>
+            <span class="round-status-tag ${done ? 'done' : (isCurr ? 'active' : '')}">
+              ${done ? '✓ Complete' : (isCurr ? '▶ Active' : 'Pending')}
+            </span>
+          </div>
+          <div class="swiss-matches-grid">`;
+
+      for (let mi = 0; mi < round.length; mi++) {
+        const m = round[mi];
+        const aWon = m.winner === m.a;
+        const bWon = m.winner === m.b;
+        const canPick = !m.winner;
+        const wA = this.wins[m.a];   const lA = this.losses[m.a];
+        const wB = this.wins[m.b];   const lB = this.losses[m.b];
+        // show record BEFORE this round's result
+        const rA = aWon ? `${wA-1}-${lA}` : bWon ? `${wA}-${lA+1}` : `${wA}-${lA}`;
+        const rB = bWon ? `${wB-1}-${lB}` : aWon ? `${wB}-${lB+1}` : `${wB}-${lB}`;
+
+        html += `
+          <div class="swiss-match-row">
+            <button class="swiss-team-btn ${aWon?'winner':bWon?'loser':''}"
+                    data-ri="${ri}" data-mi="${mi}" data-side="a"
+                    ${m.winner ? 'disabled' : ''}>
+              <span style="font-size:10px;color:var(--text-muted);min-width:28px">${rA}</span>
+              ${m.a}
+            </button>
+            <span class="vs-sep">VS</span>
+            <button class="swiss-team-btn ${bWon?'winner':aWon?'loser':''}"
+                    data-ri="${ri}" data-mi="${mi}" data-side="b"
+                    ${m.winner ? 'disabled' : ''}>
+              ${m.b}
+              <span style="font-size:10px;color:var(--text-muted);min-width:28px;text-align:right">${rB}</span>
+            </button>
+          </div>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    html += `</div></div>`;
+    container.innerHTML = html;
+
+    // Click handlers for swiss picks
+    container.querySelectorAll('.swiss-team-btn:not([disabled])').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ri   = parseInt(btn.dataset.ri);
+        const mi   = parseInt(btn.dataset.mi);
+        const side = btn.dataset.side;
+        const m    = this.rounds[ri][mi];
+        this.pickWinner(ri, mi, side === 'a' ? m.a : m.b);
+      });
+    });
+  }
+
+  standingRow(team, pos, cls) {
+    const w = this.wins[team];
+    const l = this.losses[team];
+    const buch = this.buchholz(team);
+    const dot = cls === 'advanced' ? 'adv' : cls === 'eliminated' ? 'elim' : 'none';
+    return `
+      <div class="standing-row ${cls}">
+        <span class="standing-pos">${pos}</span>
+        <span class="status-dot ${dot}"></span>
+        <img class="standing-logo" src="team_logos/${team}.png" alt="" onerror="this.style.display='none'">
+        <span class="standing-name">${team}</span>
+        <span class="standing-record">${w}-${l}</span>
+        <span class="standing-buch">BH ${buch}</span>
+      </div>`;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   START
+   ════════════════════════════════════════════════════ */
+boot();
+</script>
+</body>
+</html>

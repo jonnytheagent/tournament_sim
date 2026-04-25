@@ -1,0 +1,23 @@
+{
+  "name": "Blast Rivals 2026 Season 1",
+  "format": "bracket",
+  "date": "2026-04-29",
+  "stage_names": {
+    "1": "Opening Round",
+    "2": "Upper/Lower Round 1",
+    "3": "Quarterfinals",
+    "4": "Semifinals",
+    "5": "Grand Final"
+  },
+  "seeds": [
+    "VITALITY",
+    "NATUS VINCERE",
+    "FUT",
+    "ASTRALIS",
+    "FURIA",
+    "G2",
+    "GAMERLEGION",
+    "FAZE"
+  ]
+
+}
