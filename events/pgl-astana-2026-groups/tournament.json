@@ -1,0 +1,28 @@
+{
+  "name": "PGl Astana 2026 - Group Stage",
+  "format": "swiss",
+  "date": "2025-05-09",
+  "swiss": {
+    "rounds": 5,
+    "advance_wins": 3,
+    "eliminate_losses": 3,
+    "teams": [
+      "FURIA",
+      "MOUZ",
+      "PARIVISION",
+      "FALCONS",
+      "SPIRIT",
+      "AURORA",
+      "THE MONGOLZ",
+      "G2",
+      "GENTLE MATES",
+      "HEROIC",
+      "MONTE",
+      "9Z",
+      "K27",
+      "MAGIC",
+      "THE HUNS",
+      "FISHER COLLEGE"
+    ]
+  }
+}

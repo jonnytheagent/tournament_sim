@@ -310,62 +310,210 @@ select#event-picker:focus { outline: 1px solid var(--accent); }
 }
 
 /* ══════════════════════════════════════════════════════
-   SWISS VIEW
+   SWISS VIEW  — horizontal layout (matches ref screenshot)
    ══════════════════════════════════════════════════════ */
 
-.swiss-layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 24px;
-  align-items: start;
+.swiss-outer {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 16px;
 }
 
-/* Standings sidebar */
-.swiss-standings {
+.swiss-scroll {
+  display: inline-flex;
+  gap: 0;
+  align-items: flex-start;
+  min-width: max-content;
+}
+
+/* Each round column */
+.sw-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding-right: 32px;
+  flex-shrink: 0;
+}
+.sw-col:last-child { padding-right: 0; }
+
+.sw-col-header {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  padding-left: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sw-col-header span {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: .04em;
+  flex: 1;
+}
+.sw-rand-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text-muted);
+  border-radius: var(--r);
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color .12s, color .12s;
+  flex-shrink: 0;
+}
+.sw-rand-btn:hover { border-color: var(--accent); color: var(--text); }
+.sw-rand-all-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text-muted);
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  border-radius: var(--r);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: border-color .12s, color .12s;
+  letter-spacing: .04em;
+}
+.sw-rand-all-btn:hover { border-color: var(--accent); color: var(--text); }
+
+/* W-L group label inside a column */
+.sw-group-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 6px 2px 4px;
+  margin-top: 4px;
+}
+.sw-group-label:first-child { margin-top: 0; }
+
+/* Match card */
+.sw-match {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r);
   overflow: hidden;
+  margin-bottom: 6px;
 }
 
-.swiss-standings h3 {
+.sw-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: background .1s;
+  position: relative;
+}
+.sw-team:first-child { border-bottom: 1px solid var(--border); }
+.sw-team:hover:not(.sw-decided) { background: var(--surface2); }
+.sw-team.sw-winner {
+  background: #1a3d28;
+  border-left: 3px solid var(--win);
+}
+.sw-team.sw-loser {
+  background: var(--loss-dim);
+  opacity: .65;
+}
+.sw-team.sw-decided { cursor: default; }
+
+.sw-seed {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border-radius: 2px;
+  padding: 1px 4px;
+  min-width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.sw-team.sw-winner .sw-seed { background: #1d4a2e; color: var(--win); }
+
+.sw-logo {
+  width: 20px; height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.sw-name {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sw-team.sw-winner .sw-name { color: var(--win); }
+.sw-team.sw-loser  .sw-name { color: var(--text-muted); }
+
+/* Final standings column */
+.sw-standings-col {
+  min-width: 240px;
+  flex-shrink: 0;
+}
+
+.sw-standings-header {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
+
+.sw-section-label {
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--text-dim);
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 2px 4px;
+  margin-top: 4px;
 }
+.sw-section-label:first-child { margin-top: 0; }
 
-.standing-row {
+.sw-standing-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--border);
-  transition: background .1s;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--r);
+  margin-bottom: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
-.standing-row:last-child { border-bottom: none; }
+.sw-standing-row.adv  { background: #1a3d28; border-color: #2d5e3e; }
+.sw-standing-row.elim { background: var(--loss-dim); border-color: #4a2020; opacity: .6; }
 
-.standing-pos {
-  font-size: 11px;
+.sw-standing-pos {
+  font-size: 10px;
   color: var(--text-muted);
-  width: 16px;
+  width: 14px;
   text-align: right;
   flex-shrink: 0;
 }
-
-.standing-logo {
-  width: 18px;
-  height: 18px;
+.sw-standing-logo {
+  width: 18px; height: 18px;
   object-fit: contain;
   flex-shrink: 0;
-  border-radius: 2px;
 }
-
-.standing-name {
+.sw-standing-name {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 13px;
   font-weight: 600;
@@ -376,156 +524,25 @@ select#event-picker:focus { outline: 1px solid var(--accent); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.sw-standing-row.adv  .sw-standing-name { color: var(--win); }
+.sw-standing-row.elim .sw-standing-name { color: var(--text-muted); text-decoration: line-through; }
 
-.standing-record {
+.sw-standing-record {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-dim);
-  white-space: nowrap;
 }
-
-.standing-buch {
+.sw-standing-buch {
   font-size: 10px;
   color: var(--text-muted);
   white-space: nowrap;
 }
+.sw-standing-row.adv  .sw-standing-record { color: var(--win); }
 
-.standing-row.advanced { background: color-mix(in srgb, var(--win-dim) 60%, transparent); }
-.standing-row.advanced .standing-name { color: var(--win); }
-.standing-row.eliminated { background: color-mix(in srgb, var(--loss-dim) 60%, transparent); opacity: .6; }
-.standing-row.eliminated .standing-name { color: var(--text-dim); text-decoration: line-through; }
-
-.status-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.status-dot.adv  { background: var(--win); }
-.status-dot.elim { background: var(--loss); }
-.status-dot.none { background: transparent; }
-
-/* Swiss rounds */
-.swiss-rounds { display: flex; flex-direction: column; gap: 20px; }
-
-.round-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  overflow: hidden;
-}
-
-.round-block-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface2);
-}
-
-.round-block-header h3 {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-
-.round-record-tag {
-  font-size: 10px;
-  color: var(--text-muted);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 2px 6px;
-}
-
-.round-status-tag {
-  margin-left: auto;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-.round-status-tag.active { color: var(--accent); }
-.round-status-tag.done   { color: var(--win); }
-
-.swiss-matches-grid {
-  display: flex;
-  flex-direction: column;
-}
-
-.swiss-match-row {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-  gap: 8px;
-}
-.swiss-match-row:last-child { border-bottom: none; }
-
-.swiss-team-btn {
-  flex: 1;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  color: var(--text);
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: background .12s, border-color .12s, color .12s;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.swiss-team-btn:hover:not(:disabled) {
-  background: var(--surface);
-  border-color: var(--border2);
-}
-.swiss-team-btn.winner {
-  background: var(--win-dim);
-  border-color: #2d5e3e;
-  color: var(--win);
-}
-.swiss-team-btn.loser {
-  background: var(--loss-dim);
-  border-color: #4a2020;
-  color: var(--text-muted);
-  opacity: .7;
-}
-.swiss-team-btn:disabled { cursor: default; }
-
-.vs-sep {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.swiss-record-badge {
-  font-size: 10px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  min-width: 36px;
-  text-align: right;
-}
-
-/* Locked-in pending round */
-.round-pending-msg {
-  padding: 16px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-style: italic;
-}
+/* Status dot (still used by divider-label) */
+.status-dot { display: none; }
+.standing-logo { display: none; }
 
 /* ── Utility ─────────────────────────────────────────── */
 .divider-label {
@@ -949,18 +966,56 @@ class SwissTournament {
     this.meta    = meta;
     this.cfg     = meta.swiss;
     this.teams   = meta.swiss.teams;
-    this.wins    = Object.fromEntries(this.teams.map(t => [t, 0]));
-    this.losses  = Object.fromEntries(this.teams.map(t => [t, 0]));
-    // rounds: array of arrays of {a, b, winner: null|a|b}
-    this.rounds  = [];
-    this.generateNextRound();
+    this._init();
   }
 
-  reset() {
+  _init(manual=false) {
     this.wins   = Object.fromEntries(this.teams.map(t => [t, 0]));
     this.losses = Object.fromEntries(this.teams.map(t => [t, 0]));
     this.rounds = [];
+    this.manualMode = manual;
     this.generateNextRound();
+    if (!manual) this.autoSimulateAll(); // pre-fill by seed on load / reset
+  }
+
+  autoSimulateAll() {
+    // Simulate all rounds with top-seed always winning, so the bracket is pre-filled
+    const maxIter = 200;
+    let iter = 0;
+    while (iter++ < maxIter) {
+      const ri = this.rounds.length - 1;
+      const round = this.rounds[ri];
+      let allDone = true;
+      for (let mi = 0; mi < round.length; mi++) {
+        const m = round[mi];
+        if (!m.winner) {
+          allDone = false;
+          // top seed (lower index) wins
+          const winner = this.teams.indexOf(m.a) <= this.teams.indexOf(m.b) ? m.a : m.b;
+          m.winner = winner;
+          this.wins[winner]++;
+          const loser = winner === m.a ? m.b : m.a;
+          this.losses[loser]++;
+        }
+      }
+      if (allDone) {
+        const stillActive = this.teams.filter(t => this.isActive(t));
+        if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
+          this.generateNextRound();
+        } else {
+          break;
+        }
+      }
+    }
+  }
+
+  reset() {
+    this._init();
+    this.render(document.getElementById('app'));
+  }
+
+  clear() {
+    this._init(true); // manual mode — no auto-fill
     this.render(document.getElementById('app'));
   }
 
@@ -973,12 +1028,13 @@ class SwissTournament {
   isActive(team)     { return !this.isAdvanced(team) && !this.isEliminated(team); }
 
   buchholz(team) {
-    // sum of opponents' wins
+    // Sum of opponents' W-L differential (wins - losses per opponent)
+    // e.g. opponent at 2-0 contributes +2, opponent at 1-1 contributes 0, opponent at 0-2 contributes -2
     let score = 0;
     for (const round of this.rounds) {
       for (const m of round) {
-        if (m.a === team) score += this.wins[m.b];
-        if (m.b === team) score += this.wins[m.a];
+        if (m.a === team) score += (this.wins[m.b] - this.losses[m.b]);
+        if (m.b === team) score += (this.wins[m.a] - this.losses[m.a]);
       }
     }
     return score;
@@ -988,7 +1044,26 @@ class SwissTournament {
     const active = this.teams.filter(t => this.isActive(t));
     if (active.length < 2) return;
 
-    // Group by W-L record
+    const isRound1 = this.rounds.length === 0;
+    const seedOf   = t => this.teams.indexOf(t); // 0-based, lower = better seed
+
+    if (isRound1) {
+      // Round 1: top half vs bottom half — 1v9, 2v10, 3v11, … (for 16 teams)
+      const sorted = [...active].sort((a, b) => seedOf(a) - seedOf(b));
+      const pairs = [];
+      const half = Math.floor(sorted.length / 2);
+      for (let i = 0; i < half; i++) {
+        pairs.push({ a: sorted[i], b: sorted[half + i], winner: null });
+      }
+      if (sorted.length % 2 === 1) {
+        pairs.push({ a: sorted[sorted.length - 1], b: sorted[sorted.length - 2], winner: null });
+      }
+      this.rounds.push(pairs);
+      return;
+    }
+
+    // Subsequent rounds: group by W-L, sort within group by Buchholz desc then seed asc,
+    // pair best vs worst within group (1v4, 2v3 style), bubble odd team to next group.
     const groups = {};
     for (const t of active) {
       const key = `${this.wins[t]}-${this.losses[t]}`;
@@ -996,32 +1071,37 @@ class SwissTournament {
       groups[key].push(t);
     }
 
-    // Sort each group by seed (original index)
-    const seedOf = t => this.teams.indexOf(t);
-    for (const k in groups) groups[k].sort((a,b) => seedOf(a) - seedOf(b));
+    // Sort each group: higher Buchholz first, then lower seed first as tiebreak
+    for (const k in groups) {
+      groups[k].sort((a, b) => {
+        const buchDiff = this.buchholz(b) - this.buchholz(a);
+        if (buchDiff !== 0) return buchDiff;
+        return seedOf(a) - seedOf(b);
+      });
+    }
 
-    // Pair within groups by seed order; unpaired bubbles to next group
-    const pairs = [];
-    let leftover = null;
-
-    // Sort group keys by record (best first)
-    const sortedKeys = Object.keys(groups).sort((a,b) => {
-      const [aw,al] = a.split('-').map(Number);
-      const [bw,bl] = b.split('-').map(Number);
+    // Sort group keys: best record first
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      const [aw, al] = a.split('-').map(Number);
+      const [bw, bl] = b.split('-').map(Number);
       return (bw - bl) - (aw - al);
     });
+
+    const pairs = [];
+    let leftover = null;
 
     for (const key of sortedKeys) {
       const pool = leftover ? [leftover, ...groups[key]] : [...groups[key]];
       leftover = null;
-      for (let i = 0; i + 1 < pool.length; i += 2) {
-        pairs.push({ a: pool[i], b: pool[i+1], winner: null });
+      // Pair best vs worst: index 0 vs last, 1 vs second-to-last, …
+      const half = Math.floor(pool.length / 2);
+      for (let i = 0; i < half; i++) {
+        pairs.push({ a: pool[i], b: pool[pool.length - 1 - i], winner: null });
       }
-      if (pool.length % 2 === 1) leftover = pool[pool.length - 1];
+      if (pool.length % 2 === 1) leftover = pool[half];
     }
     if (leftover) {
-      // pair with highest available opponent
-      const fallback = active.find(t => t !== leftover && !pairs.some(p => p.a===t||p.b===t));
+      const fallback = active.find(t => t !== leftover && !pairs.some(p => p.a === t || p.b === t));
       if (fallback) pairs.push({ a: leftover, b: fallback, winner: null });
     }
 
@@ -1034,22 +1114,96 @@ class SwissTournament {
 
   pickWinner(roundIdx, matchIdx, winner) {
     const match = this.rounds[roundIdx][matchIdx];
-    if (match.winner) return; // already decided
+    if (match.winner === winner) return; // already this winner, no-op
 
-    match.winner = winner;
-    this.wins[winner]++;
-    const loser = winner === match.a ? match.b : match.a;
-    this.losses[loser]++;
-
-    // Check if round done → generate next
-    if (this.roundComplete(this.rounds[roundIdx])) {
-      const stillActive = this.teams.filter(t => this.isActive(t));
-      if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
-        this.generateNextRound();
+    // Store slot-winner decisions for all later rounds BEFORE we recalculate pairings.
+    // A slot-winner is recorded as 'A' or 'B' (which side won), not the team name.
+    const slotDecisions = []; // [{ ri, mi, side }]
+    for (let r = roundIdx + 1; r < this.rounds.length; r++) {
+      for (let mi = 0; mi < this.rounds[r].length; mi++) {
+        const m = this.rounds[r][mi];
+        if (m.winner) {
+          slotDecisions.push({ ri: r, mi, side: m.winner === m.a ? 'A' : 'B' });
+        }
       }
     }
 
+    // Set the new result and recount everything from scratch
+    match.winner = winner === match.a ? winner : match.b === winner ? winner : winner;
+    this.wins   = Object.fromEntries(this.teams.map(t => [t, 0]));
+    this.losses = Object.fromEntries(this.teams.map(t => [t, 0]));
+    for (let r = 0; r <= roundIdx; r++) {
+      for (const m of this.rounds[r]) {
+        if (m.winner) {
+          this.wins[m.winner]++;
+          const l = m.winner === m.a ? m.b : m.a;
+          this.losses[l]++;
+        }
+      }
+    }
+
+    // Regenerate all later rounds from scratch with fresh pairings
+    this.rounds.splice(roundIdx + 1);
+    this._resimulateFrom(roundIdx);
+
+    // Re-apply slot decisions: for each later round match, re-pick the same side (A or B)
+    for (const { ri, mi, side } of slotDecisions) {
+      if (ri >= this.rounds.length) continue;
+      const m = this.rounds[ri][mi];
+      if (!m) continue;
+      const pick = side === 'A' ? m.a : m.b;
+      if (m.winner === pick) continue; // already correct (seed mode set it)
+      // Override: undo whatever seed set and apply slot decision
+      if (m.winner) {
+        this.wins[m.winner]--;
+        const oldL = m.winner === m.a ? m.b : m.a;
+        this.losses[oldL]--;
+      }
+      m.winner = pick;
+      this.wins[pick]++;
+      const loser = pick === m.a ? m.b : m.a;
+      this.losses[loser]++;
+    }
+
     this.render(document.getElementById('app'));
+  }
+
+  _resimulateFrom(fromRoundIdx) {
+    if (this.manualMode) {
+      // In manual mode: only generate the next round if current is complete, but don't fill it
+      const round = this.rounds[this.rounds.length - 1];
+      if (this.roundComplete(round)) {
+        const stillActive = this.teams.filter(t => this.isActive(t));
+        if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
+          this.generateNextRound();
+        }
+      }
+      return;
+    }
+    // Seed mode: auto-fill all remaining rounds
+    const maxIter = 200;
+    let iter = 0;
+    while (iter++ < maxIter) {
+      const ri = this.rounds.length - 1;
+      const round = this.rounds[ri];
+      let allDone = true;
+      for (const m of round) {
+        if (!m.winner) {
+          allDone = false;
+          const winner = this.teams.indexOf(m.a) <= this.teams.indexOf(m.b) ? m.a : m.b;
+          m.winner = winner;
+          this.wins[winner]++;
+          const loser = winner === m.a ? m.b : m.a;
+          this.losses[loser]++;
+        }
+      }
+      if (allDone) {
+        const stillActive = this.teams.filter(t => this.isActive(t));
+        if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
+          this.generateNextRound();
+        } else break;
+      }
+    }
   }
 
   standings() {
@@ -1062,127 +1216,254 @@ class SwissTournament {
     });
   }
 
+  randomizeRound(ri) {
+    // Store slot decisions for rounds AFTER ri (preserve them)
+    const slotDecisions = [];
+    for (let r = ri + 1; r < this.rounds.length; r++) {
+      for (let mi = 0; mi < this.rounds[r].length; mi++) {
+        const m = this.rounds[r][mi];
+        if (m.winner) slotDecisions.push({ ri: r, mi, side: m.winner === m.a ? 'A' : 'B' });
+      }
+    }
+
+    // Recount wins/losses up to but not including this round
+    this.wins   = Object.fromEntries(this.teams.map(t => [t, 0]));
+    this.losses = Object.fromEntries(this.teams.map(t => [t, 0]));
+    for (let r = 0; r < ri; r++) {
+      for (const m of this.rounds[r]) {
+        if (m.winner) {
+          this.wins[m.winner]++;
+          this.losses[m.winner === m.a ? m.b : m.a]++;
+        }
+      }
+    }
+
+    // Re-roll all matches in this round
+    const round = this.rounds[ri];
+    for (const m of round) {
+      m.winner = null; // clear first
+    }
+    for (const m of round) {
+      const pick = Math.random() < 0.5 ? m.a : m.b;
+      m.winner = pick;
+      this.wins[pick]++;
+      this.losses[pick === m.a ? m.b : m.a]++;
+    }
+
+    // Regenerate later rounds
+    this.rounds.splice(ri + 1);
+    this._resimulateFrom(ri);
+
+    // Re-apply slot decisions
+    for (const { ri: r, mi, side } of slotDecisions) {
+      if (r >= this.rounds.length) continue;
+      const m = this.rounds[r][mi];
+      if (!m) continue;
+      const pick = side === 'A' ? m.a : m.b;
+      if (m.winner === pick) continue;
+      if (m.winner) {
+        this.wins[m.winner]--;
+        this.losses[m.winner === m.a ? m.b : m.a]--;
+      }
+      m.winner = pick;
+      this.wins[pick]++;
+      this.losses[pick === m.a ? m.b : m.a]++;
+    }
+
+    this.render(document.getElementById('app'));
+  }
+
+  randomizeAll() {
+    // Clear everything and re-roll all rounds from scratch
+    this.wins   = Object.fromEntries(this.teams.map(t => [t, 0]));
+    this.losses = Object.fromEntries(this.teams.map(t => [t, 0]));
+    this.rounds = [];
+    this.generateNextRound();
+
+    const maxIter = 200;
+    let iter = 0;
+    while (iter++ < maxIter) {
+      const round = this.rounds[this.rounds.length - 1];
+      for (const m of round) {
+        if (!m.winner) {
+          const pick = Math.random() < 0.5 ? m.a : m.b;
+          m.winner = pick;
+          this.wins[pick]++;
+          this.losses[pick === m.a ? m.b : m.a]++;
+        }
+      }
+      if (this.roundComplete(round)) {
+        const stillActive = this.teams.filter(t => this.isActive(t));
+        if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
+          this.generateNextRound();
+        } else break;
+      }
+    }
+    this.render(document.getElementById('app'));
+  }
+
   render(container) {
     const advW  = this.advWins();
     const elimL = this.elimLoss();
+    const seedOf = t => this.teams.indexOf(t);
 
     let html = `
       <div class="event-meta">
         <h2>${this.meta.name}</h2>
         <span class="badge badge-swiss">Swiss</span>
         ${this.meta.date ? `<span class="event-date">${this.meta.date}</span>` : ''}
+        <button class="sw-rand-all-btn" title="Randomize all rounds">🎲 Randomize All</button>
       </div>
-      <div class="swiss-layout">
-        <div class="swiss-standings">
-          <h3>Standings</h3>`;
+      <div class="swiss-outer"><div class="swiss-scroll">`;
 
-    const sorted = this.standings();
+    // ── Round columns ──────────────────────────────────────
+    for (let ri = 0; ri < this.rounds.length; ri++) {
+      const round = this.rounds[ri];
+      const done  = this.roundComplete(round);
+
+      // Compute record before this round's results for each match
+      // group matches by their W-L going INTO this round
+      const getRecordBefore = (m) => {
+        let w = 0, l = 0;
+        for (let pr = 0; pr < ri; pr++) {
+          for (const pm of this.rounds[pr]) {
+            if (pm.winner === m.a) w++;
+            else if (pm.a === m.a || pm.b === m.a) l++;
+          }
+        }
+        return `${w}-${l}`;
+      };
+
+      // Group matches by record
+      const groups = {};
+      for (const m of round) {
+        const key = getRecordBefore(m);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(m);
+      }
+      const groupKeys = Object.keys(groups).sort((a,b) => {
+        const [aw,al] = a.split('-').map(Number);
+        const [bw,bl] = b.split('-').map(Number);
+        return (bw-bl)-(aw-al);
+      });
+
+      html += `<div class="sw-col">
+        <div class="sw-col-header">
+          Round ${ri+1}
+          <span>${done ? '✓ Complete' : (ri===this.rounds.length-1?'▶ Active':'')}</span>
+          <button class="sw-rand-btn" data-rand-round="${ri}" title="Randomize this round">🎲</button>
+        </div>`;
+
+      for (const key of groupKeys) {
+        html += `<div class="sw-group-label">${key}</div>`;
+        for (const m of groups[key]) {
+          const mi   = round.indexOf(m);
+          const aWon = m.winner === m.a;
+          const bWon = m.winner === m.b;
+          const sA   = seedOf(m.a) + 1;
+          const sB   = seedOf(m.b) + 1;
+
+          const teamRow = (team, side, won, lost) => `
+            <div class="sw-team ${won?'sw-winner':lost?'sw-loser':''}"
+                 data-ri="${ri}" data-mi="${mi}" data-side="${side}">
+              <span class="sw-seed">${side==='a'?sA:sB}</span>
+              <img class="sw-logo" src="team_logos/${team}.png" alt="" onerror="this.style.display='none'">
+              <span class="sw-name">${team}</span>
+            </div>`;
+
+          html += `<div class="sw-match">
+            ${teamRow(m.a, 'a', aWon, bWon)}
+            ${teamRow(m.b, 'b', bWon, aWon)}
+          </div>`;
+        }
+      }
+
+      html += `</div>`; // sw-col
+    }
+
+    // ── Final standings column ─────────────────────────────
+    const sorted     = this.standings();
     const advanced   = sorted.filter(t => this.isAdvanced(t));
     const active     = sorted.filter(t => this.isActive(t));
     const eliminated = sorted.filter(t => this.isEliminated(t));
 
+    html += `<div class="sw-standings-col">
+      <div class="sw-standings-header">Final Result</div>`;
+
     if (advanced.length) {
-      html += `<div class="divider-label">Advanced (${advW}-x)</div>`;
-      advanced.forEach((t, i) => {
-        html += this.standingRow(t, i+1, 'advanced');
-      });
-    }
-    if (active.length) {
-      if (advanced.length) html += `<div class="divider-label">Active</div>`;
-      active.forEach((t, i) => {
-        html += this.standingRow(t, advanced.length + i + 1, '');
-      });
-    }
-    if (eliminated.length) {
-      html += `<div class="divider-label">Eliminated (x-${elimL})</div>`;
-      eliminated.forEach((t, i) => {
-        html += this.standingRow(t, advanced.length + active.length + i + 1, 'eliminated');
-      });
+      html += `<div class="sw-section-label">${advW}-X → Advanced</div>`;
+      advanced.forEach((t,i) => { html += this.swStandingRow(t, i+1, 'adv'); });
     }
 
-    html += `</div><div class="swiss-rounds">`;
-
-    for (let ri = 0; ri < this.rounds.length; ri++) {
-      const round   = this.rounds[ri];
-      const done    = this.roundComplete(round);
-      const isCurr  = ri === this.rounds.length - 1;
-
-      // Determine record groups present in this round
-      const records = [...new Set(round.map(m => {
-        const w = this.wins[m.a]; const l = this.losses[m.a]; // before pick
-        return null; // skip label
-      }))];
-
-      html += `
-        <div class="round-block">
-          <div class="round-block-header">
-            <h3>Round ${ri + 1}</h3>
-            <span class="round-status-tag ${done ? 'done' : (isCurr ? 'active' : '')}">
-              ${done ? '✓ Complete' : (isCurr ? '▶ Active' : 'Pending')}
-            </span>
-          </div>
-          <div class="swiss-matches-grid">`;
-
-      for (let mi = 0; mi < round.length; mi++) {
-        const m = round[mi];
-        const aWon = m.winner === m.a;
-        const bWon = m.winner === m.b;
-        const canPick = !m.winner;
-        const wA = this.wins[m.a];   const lA = this.losses[m.a];
-        const wB = this.wins[m.b];   const lB = this.losses[m.b];
-        // show record BEFORE this round's result
-        const rA = aWon ? `${wA-1}-${lA}` : bWon ? `${wA}-${lA+1}` : `${wA}-${lA}`;
-        const rB = bWon ? `${wB-1}-${lB}` : aWon ? `${wB}-${lB+1}` : `${wB}-${lB}`;
-
-        html += `
-          <div class="swiss-match-row">
-            <button class="swiss-team-btn ${aWon?'winner':bWon?'loser':''}"
-                    data-ri="${ri}" data-mi="${mi}" data-side="a"
-                    ${m.winner ? 'disabled' : ''}>
-              <span style="font-size:10px;color:var(--text-muted);min-width:28px">${rA}</span>
-              ${m.a}
-            </button>
-            <span class="vs-sep">VS</span>
-            <button class="swiss-team-btn ${bWon?'winner':aWon?'loser':''}"
-                    data-ri="${ri}" data-mi="${mi}" data-side="b"
-                    ${m.winner ? 'disabled' : ''}>
-              ${m.b}
-              <span style="font-size:10px;color:var(--text-muted);min-width:28px;text-align:right">${rB}</span>
-            </button>
-          </div>`;
+    // Group active by record
+    const activeGroups = {};
+    for (const t of active) {
+      const key = `${this.wins[t]}-${this.losses[t]}`;
+      if (!activeGroups[key]) activeGroups[key] = [];
+      activeGroups[key].push(t);
+    }
+    const activeKeys = Object.keys(activeGroups).sort((a,b)=>{
+      const [aw,al]=a.split('-').map(Number); const [bw,bl]=b.split('-').map(Number);
+      return (bw-bl)-(aw-al);
+    });
+    let pos = advanced.length + 1;
+    for (const key of activeKeys) {
+      html += `<div class="sw-section-label">${key}</div>`;
+      for (const t of activeGroups[key]) {
+        html += this.swStandingRow(t, pos++, '');
       }
-
-      html += `</div></div>`;
     }
 
-    html += `</div></div>`;
+    if (eliminated.length) {
+      html += `<div class="sw-section-label">Eliminated</div>`;
+      eliminated.forEach((t,i) => { html += this.swStandingRow(t, pos+i, 'elim'); });
+    }
+
+    html += `</div>`; // sw-standings-col
+    html += `</div></div>`; // swiss-scroll, swiss-outer
     container.innerHTML = html;
 
-    // Click handlers for swiss picks
-    container.querySelectorAll('.swiss-team-btn:not([disabled])').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const ri   = parseInt(btn.dataset.ri);
-        const mi   = parseInt(btn.dataset.mi);
-        const side = btn.dataset.side;
+    // Random round buttons
+    container.querySelectorAll('.sw-rand-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ri = parseInt(btn.dataset.randRound);
+        this.randomizeRound(ri);
+      });
+    });
+
+    // Global random button
+    const randAllBtn = container.querySelector('.sw-rand-all-btn');
+    if (randAllBtn) {
+      randAllBtn.addEventListener('click', () => this.randomizeAll());
+    }
+
+    // Click handlers — click either team to set as winner
+    container.querySelectorAll('.sw-team').forEach(el => {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => {
+        const ri   = parseInt(el.dataset.ri);
+        const mi   = parseInt(el.dataset.mi);
+        const side = el.dataset.side;
         const m    = this.rounds[ri][mi];
-        this.pickWinner(ri, mi, side === 'a' ? m.a : m.b);
+        const pick = side === 'a' ? m.a : m.b;
+        if (m.winner === pick) return; // already winner, no-op
+        this.pickWinner(ri, mi, pick);
       });
     });
   }
 
-  standingRow(team, pos, cls) {
+  swStandingRow(team, pos, cls) {
     const w = this.wins[team];
     const l = this.losses[team];
     const buch = this.buchholz(team);
-    const dot = cls === 'advanced' ? 'adv' : cls === 'eliminated' ? 'elim' : 'none';
     return `
-      <div class="standing-row ${cls}">
-        <span class="standing-pos">${pos}</span>
-        <span class="status-dot ${dot}"></span>
-        <img class="standing-logo" src="team_logos/${team}.png" alt="" onerror="this.style.display='none'">
-        <span class="standing-name">${team}</span>
-        <span class="standing-record">${w}-${l}</span>
-        <span class="standing-buch">BH ${buch}</span>
+      <div class="sw-standing-row ${cls}">
+        <span class="sw-standing-pos">${pos}</span>
+        <img class="sw-standing-logo" src="team_logos/${team}.png" alt="" onerror="this.style.display='none'">
+        <span class="sw-standing-name">${team}</span>
+        <span class="sw-standing-record">${w}-${l}</span>
+        <span class="sw-standing-buch">BH&nbsp;${buch}</span>
       </div>`;
   }
 }
