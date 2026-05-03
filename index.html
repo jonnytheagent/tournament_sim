@@ -963,95 +963,163 @@ class BracketTournament {
 
 class SwissTournament {
   constructor(meta) {
-    this.meta    = meta;
-    this.cfg     = meta.swiss;
-    this.teams   = meta.swiss.teams;
+    this.meta  = meta;
+    this.cfg   = meta.swiss;
+    this.teams = meta.swiss.teams;
     this._init();
   }
 
-  _init(manual=false) {
-    this.wins   = Object.fromEntries(this.teams.map(t => [t, 0]));
-    this.losses = Object.fromEntries(this.teams.map(t => [t, 0]));
-    this.rounds = [];
+  /* ── Core state helpers ───────────────────────────── */
+
+  _init(manual = false) {
+    this.rounds     = [];
     this.manualMode = manual;
+    this._recount();
     this.generateNextRound();
-    if (!manual) this.autoSimulateAll(); // pre-fill by seed on load / reset
+    if (!manual) this._fillSeeds();
   }
 
-  autoSimulateAll() {
-    // Simulate all rounds with top-seed always winning, so the bracket is pre-filled
-    const maxIter = 200;
-    let iter = 0;
-    while (iter++ < maxIter) {
-      const ri = this.rounds.length - 1;
-      const round = this.rounds[ri];
-      let allDone = true;
-      for (let mi = 0; mi < round.length; mi++) {
-        const m = round[mi];
-        if (!m.winner) {
-          allDone = false;
-          // top seed (lower index) wins
-          const winner = this.teams.indexOf(m.a) <= this.teams.indexOf(m.b) ? m.a : m.b;
-          m.winner = winner;
-          this.wins[winner]++;
-          const loser = winner === m.a ? m.b : m.a;
-          this.losses[loser]++;
-        }
-      }
-      if (allDone) {
-        const stillActive = this.teams.filter(t => this.isActive(t));
-        if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
-          this.generateNextRound();
-        } else {
-          break;
+  // Recompute wins/losses purely from what's stored in this.rounds
+  _recount() {
+    this.wins   = Object.fromEntries(this.teams.map(t => [t, 0]));
+    this.losses = Object.fromEntries(this.teams.map(t => [t, 0]));
+    for (const round of this.rounds) {
+      for (const m of round) {
+        if (m.winner) {
+          this.wins[m.winner]++;
+          this.losses[m.winner === m.a ? m.b : m.a]++;
         }
       }
     }
   }
 
-  reset() {
-    this._init();
-    this.render(document.getElementById('app'));
+  // Run one full pass: fill empty matches with pickFn, generate new rounds, repeat.
+  // Returns when all rounds complete or totalRounds reached.
+  _runFill(pickFn) {
+    for (let iter = 0; iter < 500; iter++) {
+      this._recount();
+      const round = this.rounds[this.rounds.length - 1];
+
+      // Fill any empty slots in the current round
+      let filled = false;
+      for (const m of round) {
+        if (!m.winner) {
+          m.winner = pickFn(m);
+          this.wins[m.winner]++;
+          this.losses[m.winner === m.a ? m.b : m.a]++;
+          filled = true;
+        }
+      }
+
+      // Check if current round is now complete
+      if (this.roundComplete(round)) {
+        const stillActive = this.teams.filter(t => this.isActive(t));
+        if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
+          this.generateNextRound(); // generates with correct _recount state
+        } else {
+          break; // done
+        }
+      } else if (!filled) {
+        break; // nothing left to fill and round not complete — shouldn't happen
+      }
+    }
+    this._recount(); // final clean recount
   }
 
-  clear() {
-    this._init(true); // manual mode — no auto-fill
-    this.render(document.getElementById('app'));
+  _fillSeeds()  { this._runFill(m => this.teams.indexOf(m.a) <= this.teams.indexOf(m.b) ? m.a : m.b); }
+  _fillRandom() { this._runFill(m => Math.random() < 0.5 ? m.a : m.b); }
+
+  // Core: apply one result, drop later rounds, re-fill, then re-apply slot decisions.
+  _applyAndRebuild(roundIdx, matchIdx, newWinner, fillFn) {
+    // Snapshot slot decisions (A/B side) for all rounds after roundIdx
+    const slotDecisions = [];
+    for (let r = roundIdx + 1; r < this.rounds.length; r++) {
+      for (let mi = 0; mi < this.rounds[r].length; mi++) {
+        const m = this.rounds[r][mi];
+        if (m.winner) slotDecisions.push({ r, mi, side: m.winner === m.a ? 'A' : 'B' });
+      }
+    }
+
+    // Set the new result and drop everything after this round
+    this.rounds[roundIdx][matchIdx].winner = newWinner;
+    this.rounds.splice(roundIdx + 1);
+    this._recount();
+
+    // Re-fill later rounds (generates pairings + fills them)
+    fillFn();
+
+    // Re-apply slot decisions: for each saved slot, override whatever was auto-filled
+    // and then re-run fill from that point forward
+    for (const { r, mi, side } of slotDecisions) {
+      if (r >= this.rounds.length) continue;
+      const round = this.rounds[r];
+      if (!round) continue;
+      const m = round[mi];
+      if (!m) continue;
+
+      const pick = side === 'A' ? m.a : m.b;
+      if (m.winner === pick) continue; // already correct, skip
+
+      // Override this slot
+      m.winner = pick;
+
+      // Drop rounds after r and re-fill from here
+      this.rounds.splice(r + 1);
+      this._recount();
+      fillFn();
+    }
+
+    this._recount(); // final clean state
   }
 
-  advWins()  { return this.cfg.advance_wins  || 3; }
-  elimLoss() { return this.cfg.eliminate_losses || 3; }
-  totalRounds() { return this.cfg.rounds || 5; }
+  /* ── Public API ───────────────────────────────────── */
 
-  isAdvanced(team)   { return this.wins[team]   >= this.advWins(); }
-  isEliminated(team) { return this.losses[team] >= this.elimLoss(); }
-  isActive(team)     { return !this.isAdvanced(team) && !this.isEliminated(team); }
+  reset() { this._init(false); this.render(document.getElementById('app')); }
+  clear() { this._init(true);  this.render(document.getElementById('app')); }
+
+  advWins()     { return this.cfg.advance_wins     || 3; }
+  elimLoss()    { return this.cfg.eliminate_losses || 3; }
+  totalRounds() { return this.cfg.rounds           || 5; }
+
+  isAdvanced(t)   { return this.wins[t]   >= this.advWins(); }
+  isEliminated(t) { return this.losses[t] >= this.elimLoss(); }
+  isActive(t)     { return !this.isAdvanced(t) && !this.isEliminated(t); }
 
   buchholz(team) {
-    // Sum of opponents' W-L differential (wins - losses per opponent)
-    // e.g. opponent at 2-0 contributes +2, opponent at 1-1 contributes 0, opponent at 0-2 contributes -2
     let score = 0;
     for (const round of this.rounds) {
       for (const m of round) {
-        if (m.a === team) score += (this.wins[m.b] - this.losses[m.b]);
-        if (m.b === team) score += (this.wins[m.a] - this.losses[m.a]);
+        if (m.a === team) score += this.wins[m.b]   - this.losses[m.b];
+        if (m.b === team) score += this.wins[m.a]   - this.losses[m.a];
       }
     }
     return score;
   }
 
+  // Returns set of "team:opponent" pairs that have already played
+  _playedPairs() {
+    const played = new Set();
+    for (const round of this.rounds) {
+      for (const m of round) {
+        played.add(`${m.a}::${m.b}`);
+        played.add(`${m.b}::${m.a}`);
+      }
+    }
+    return played;
+  }
+
   generateNextRound() {
-    const active = this.teams.filter(t => this.isActive(t));
+    const active  = this.teams.filter(t => this.isActive(t));
     if (active.length < 2) return;
 
-    const isRound1 = this.rounds.length === 0;
-    const seedOf   = t => this.teams.indexOf(t); // 0-based, lower = better seed
+    const seedOf  = t => this.teams.indexOf(t);
+    const played  = this._playedPairs();
 
-    if (isRound1) {
-      // Round 1: top half vs bottom half — 1v9, 2v10, 3v11, … (for 16 teams)
+    if (this.rounds.length === 0) {
+      // Round 1: seed 1 vs seed 9, 2 vs 10, … (top half vs bottom half)
       const sorted = [...active].sort((a, b) => seedOf(a) - seedOf(b));
-      const pairs = [];
-      const half = Math.floor(sorted.length / 2);
+      const half   = Math.floor(sorted.length / 2);
+      const pairs  = [];
       for (let i = 0; i < half; i++) {
         pairs.push({ a: sorted[i], b: sorted[half + i], winner: null });
       }
@@ -1062,8 +1130,7 @@ class SwissTournament {
       return;
     }
 
-    // Subsequent rounds: group by W-L, sort within group by Buchholz desc then seed asc,
-    // pair best vs worst within group (1v4, 2v3 style), bubble odd team to next group.
+    // Group by W-L record
     const groups = {};
     for (const t of active) {
       const key = `${this.wins[t]}-${this.losses[t]}`;
@@ -1071,235 +1138,147 @@ class SwissTournament {
       groups[key].push(t);
     }
 
-    // Sort each group: higher Buchholz first, then lower seed first as tiebreak
+    // Within each group: sort by Buchholz desc, then seed asc
     for (const k in groups) {
       groups[k].sort((a, b) => {
-        const buchDiff = this.buchholz(b) - this.buchholz(a);
-        if (buchDiff !== 0) return buchDiff;
-        return seedOf(a) - seedOf(b);
+        const bd = this.buchholz(b) - this.buchholz(a);
+        return bd !== 0 ? bd : seedOf(a) - seedOf(b);
       });
     }
 
-    // Sort group keys: best record first
+    // Process groups best-record first
     const sortedKeys = Object.keys(groups).sort((a, b) => {
       const [aw, al] = a.split('-').map(Number);
       const [bw, bl] = b.split('-').map(Number);
       return (bw - bl) - (aw - al);
     });
 
-    const pairs = [];
-    let leftover = null;
+    const pairs    = [];
+    let leftover   = null;
+    const paired   = new Set();
+
+    const tryPair  = (a, pool) => {
+      // Find best valid opponent for a (no rematch, not already paired)
+      for (let j = pool.length - 1; j >= 0; j--) {
+        const b = pool[j];
+        if (b === a || paired.has(b)) continue;
+        if (!played.has(`${a}::${b}`)) return b;
+      }
+      // Fallback: allow rematch if no other option
+      for (let j = pool.length - 1; j >= 0; j--) {
+        const b = pool[j];
+        if (b === a || paired.has(b)) continue;
+        return b;
+      }
+      return null;
+    };
 
     for (const key of sortedKeys) {
       const pool = leftover ? [leftover, ...groups[key]] : [...groups[key]];
-      leftover = null;
-      // Pair best vs worst: index 0 vs last, 1 vs second-to-last, …
-      const half = Math.floor(pool.length / 2);
-      for (let i = 0; i < half; i++) {
-        pairs.push({ a: pool[i], b: pool[pool.length - 1 - i], winner: null });
+      leftover   = null;
+
+      // Pair best vs worst, skipping rematches
+      const unpaired = [...pool];
+      while (unpaired.length >= 2) {
+        const a = unpaired[0]; // best available
+        unpaired.splice(0, 1);
+        if (paired.has(a)) continue;
+
+        const b = tryPair(a, unpaired);
+        if (b !== null) {
+          unpaired.splice(unpaired.indexOf(b), 1);
+          pairs.push({ a, b, winner: null });
+          paired.add(a); paired.add(b);
+        } else {
+          leftover = a; // bubble to next group
+        }
       }
-      if (pool.length % 2 === 1) leftover = pool[half];
+      if (unpaired.length === 1 && !paired.has(unpaired[0])) leftover = unpaired[0];
     }
+
+    // Last-resort leftover
     if (leftover) {
-      const fallback = active.find(t => t !== leftover && !pairs.some(p => p.a === t || p.b === t));
+      const fallback = active.find(t => !paired.has(t) && t !== leftover);
       if (fallback) pairs.push({ a: leftover, b: fallback, winner: null });
     }
 
     this.rounds.push(pairs);
   }
 
-  getRoundNumber() { return this.rounds.length; }
-  currentRound()   { return this.rounds[this.rounds.length - 1]; }
   roundComplete(r) { return r.every(m => m.winner !== null); }
 
   pickWinner(roundIdx, matchIdx, winner) {
     const match = this.rounds[roundIdx][matchIdx];
-    if (match.winner === winner) return; // already this winner, no-op
-
-    // Store slot-winner decisions for all later rounds BEFORE we recalculate pairings.
-    // A slot-winner is recorded as 'A' or 'B' (which side won), not the team name.
-    const slotDecisions = []; // [{ ri, mi, side }]
-    for (let r = roundIdx + 1; r < this.rounds.length; r++) {
-      for (let mi = 0; mi < this.rounds[r].length; mi++) {
-        const m = this.rounds[r][mi];
-        if (m.winner) {
-          slotDecisions.push({ ri: r, mi, side: m.winner === m.a ? 'A' : 'B' });
-        }
-      }
-    }
-
-    // Set the new result and recount everything from scratch
-    match.winner = winner === match.a ? winner : match.b === winner ? winner : winner;
-    this.wins   = Object.fromEntries(this.teams.map(t => [t, 0]));
-    this.losses = Object.fromEntries(this.teams.map(t => [t, 0]));
-    for (let r = 0; r <= roundIdx; r++) {
-      for (const m of this.rounds[r]) {
-        if (m.winner) {
-          this.wins[m.winner]++;
-          const l = m.winner === m.a ? m.b : m.a;
-          this.losses[l]++;
-        }
-      }
-    }
-
-    // Regenerate all later rounds from scratch with fresh pairings
-    this.rounds.splice(roundIdx + 1);
-    this._resimulateFrom(roundIdx);
-
-    // Re-apply slot decisions: for each later round match, re-pick the same side (A or B)
-    for (const { ri, mi, side } of slotDecisions) {
-      if (ri >= this.rounds.length) continue;
-      const m = this.rounds[ri][mi];
-      if (!m) continue;
-      const pick = side === 'A' ? m.a : m.b;
-      if (m.winner === pick) continue; // already correct (seed mode set it)
-      // Override: undo whatever seed set and apply slot decision
-      if (m.winner) {
-        this.wins[m.winner]--;
-        const oldL = m.winner === m.a ? m.b : m.a;
-        this.losses[oldL]--;
-      }
-      m.winner = pick;
-      this.wins[pick]++;
-      const loser = pick === m.a ? m.b : m.a;
-      this.losses[loser]++;
-    }
-
+    if (match.winner === winner) return;
+    const fillFn = this.manualMode ? () => this._generateShellIfDone() : () => this._fillSeeds();
+    this._applyAndRebuild(roundIdx, matchIdx, winner, fillFn);
     this.render(document.getElementById('app'));
   }
 
-  _resimulateFrom(fromRoundIdx) {
-    if (this.manualMode) {
-      // In manual mode: only generate the next round if current is complete, but don't fill it
-      const round = this.rounds[this.rounds.length - 1];
-      if (this.roundComplete(round)) {
-        const stillActive = this.teams.filter(t => this.isActive(t));
-        if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
-          this.generateNextRound();
-        }
-      }
-      return;
-    }
-    // Seed mode: auto-fill all remaining rounds
-    const maxIter = 200;
-    let iter = 0;
-    while (iter++ < maxIter) {
-      const ri = this.rounds.length - 1;
-      const round = this.rounds[ri];
-      let allDone = true;
-      for (const m of round) {
-        if (!m.winner) {
-          allDone = false;
-          const winner = this.teams.indexOf(m.a) <= this.teams.indexOf(m.b) ? m.a : m.b;
-          m.winner = winner;
-          this.wins[winner]++;
-          const loser = winner === m.a ? m.b : m.a;
-          this.losses[loser]++;
-        }
-      }
-      if (allDone) {
-        const stillActive = this.teams.filter(t => this.isActive(t));
-        if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
-          this.generateNextRound();
-        } else break;
-      }
-    }
-  }
-
-  standings() {
-    return [...this.teams].sort((a, b) => {
-      const wDiff = this.wins[b] - this.wins[a];
-      if (wDiff !== 0) return wDiff;
-      const lDiff = this.losses[a] - this.losses[b]; // fewer losses = better
-      if (lDiff !== 0) return lDiff;
-      return this.buchholz(b) - this.buchholz(a);
-    });
-  }
-
   randomizeRound(ri) {
-    // Store slot decisions for rounds AFTER ri (preserve them)
+    // Snapshot slot decisions for rounds AFTER ri (preserve them)
     const slotDecisions = [];
     for (let r = ri + 1; r < this.rounds.length; r++) {
       for (let mi = 0; mi < this.rounds[r].length; mi++) {
         const m = this.rounds[r][mi];
-        if (m.winner) slotDecisions.push({ ri: r, mi, side: m.winner === m.a ? 'A' : 'B' });
+        if (m.winner) slotDecisions.push({ r, mi, side: m.winner === m.a ? 'A' : 'B' });
       }
     }
 
-    // Recount wins/losses up to but not including this round
-    this.wins   = Object.fromEntries(this.teams.map(t => [t, 0]));
-    this.losses = Object.fromEntries(this.teams.map(t => [t, 0]));
-    for (let r = 0; r < ri; r++) {
-      for (const m of this.rounds[r]) {
-        if (m.winner) {
-          this.wins[m.winner]++;
-          this.losses[m.winner === m.a ? m.b : m.a]++;
-        }
-      }
-    }
-
-    // Re-roll all matches in this round
+    // Re-roll this round and drop everything after
     const round = this.rounds[ri];
-    for (const m of round) {
-      m.winner = null; // clear first
-    }
-    for (const m of round) {
-      const pick = Math.random() < 0.5 ? m.a : m.b;
-      m.winner = pick;
-      this.wins[pick]++;
-      this.losses[pick === m.a ? m.b : m.a]++;
-    }
-
-    // Regenerate later rounds
+    for (const m of round) m.winner = Math.random() < 0.5 ? m.a : m.b;
     this.rounds.splice(ri + 1);
-    this._resimulateFrom(ri);
+    this._recount();
+
+    const fillFn = this.manualMode ? () => this._generateShellIfDone() : () => this._fillSeeds();
+    fillFn();
 
     // Re-apply slot decisions
-    for (const { ri: r, mi, side } of slotDecisions) {
+    for (const { r, mi, side } of slotDecisions) {
       if (r >= this.rounds.length) continue;
       const m = this.rounds[r][mi];
       if (!m) continue;
       const pick = side === 'A' ? m.a : m.b;
       if (m.winner === pick) continue;
-      if (m.winner) {
-        this.wins[m.winner]--;
-        this.losses[m.winner === m.a ? m.b : m.a]--;
-      }
       m.winner = pick;
-      this.wins[pick]++;
-      this.losses[pick === m.a ? m.b : m.a]++;
+      this.rounds.splice(r + 1);
+      this._recount();
+      fillFn();
     }
 
+    this._recount();
     this.render(document.getElementById('app'));
   }
 
-  randomizeAll() {
-    // Clear everything and re-roll all rounds from scratch
-    this.wins   = Object.fromEntries(this.teams.map(t => [t, 0]));
-    this.losses = Object.fromEntries(this.teams.map(t => [t, 0]));
-    this.rounds = [];
-    this.generateNextRound();
-
-    const maxIter = 200;
-    let iter = 0;
-    while (iter++ < maxIter) {
-      const round = this.rounds[this.rounds.length - 1];
-      for (const m of round) {
-        if (!m.winner) {
-          const pick = Math.random() < 0.5 ? m.a : m.b;
-          m.winner = pick;
-          this.wins[pick]++;
-          this.losses[pick === m.a ? m.b : m.a]++;
-        }
-      }
-      if (this.roundComplete(round)) {
-        const stillActive = this.teams.filter(t => this.isActive(t));
-        if (stillActive.length >= 2 && this.rounds.length < this.totalRounds()) {
-          this.generateNextRound();
-        } else break;
+  // In manual mode: just generate the next empty round shell if current round is done
+  _generateShellIfDone() {
+    this._recount();
+    const round = this.rounds[this.rounds.length - 1];
+    if (this.roundComplete(round)) {
+      const still = this.teams.filter(t => this.isActive(t));
+      if (still.length >= 2 && this.rounds.length < this.totalRounds()) {
+        this.generateNextRound();
       }
     }
+  }
+
+  randomizeAll() {
+    this.rounds = [];
+    this._recount();
+    this.generateNextRound();
+    this._fillRandom();
     this.render(document.getElementById('app'));
+  }
+
+  standings() {
+    return [...this.teams].sort((a, b) => {
+      const wd = this.wins[b] - this.wins[a];
+      if (wd !== 0) return wd;
+      const ld = this.losses[a] - this.losses[b];
+      if (ld !== 0) return ld;
+      return this.buchholz(b) - this.buchholz(a);
+    });
   }
 
   render(container) {
